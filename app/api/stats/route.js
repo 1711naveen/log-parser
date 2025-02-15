@@ -35,7 +35,25 @@ const parseLogs = (data) => {
     }
   }
 
-  return { ipCount, hourCount, topIPs };
+  // Calculate hours contributing to 70% of traffic
+  const totalHourRequests = hourCount.reduce((sum, count) => sum + count, 0);
+  const sortedHours = hourCount
+    .map((count, hour) => ({ hour, count }))
+    .sort((a, b) => b.count - a.count);
+
+  let cumulativeHourTraffic = 0;
+  let topHours = [];
+
+  for (const { hour, count } of sortedHours) {
+    cumulativeHourTraffic += count;
+    topHours.push(hour);
+
+    if ((cumulativeHourTraffic / totalHourRequests) >= 0.7) {
+      break;
+    }
+  }
+
+  return { ipCount, hourCount, topIPs, topHours };
 };
 
 export async function GET() {
@@ -43,7 +61,7 @@ export async function GET() {
   if (!fs.existsSync(logPath)) return Response.json({ error: "Log file not found" }, { status: 404 });
 
   const logData = fs.readFileSync(logPath, "utf-8");
-  const { ipCount, hourCount, topIPs } = parseLogs(logData);
+  const { ipCount, hourCount, topIPs, topHours } = parseLogs(logData);
 
-  return Response.json({ ipCount, hourCount, topIPs });
+  return Response.json({ ipCount, hourCount, topIPs, topHours });
 }
